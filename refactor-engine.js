@@ -31,8 +31,12 @@ export class RefactorEngine {
             const styles = Array.from(doc.querySelectorAll('style'));
             if (styles.length > 0) {
                 styles.forEach((style) => {
-                    // Use textContent to avoid HTML entity encoding issues and grab raw CSS
-                    const content = style.textContent.trim();
+                    // Get raw content and clean up potential HTML comments (legacy hack)
+                    let content = style.textContent;
+                    if (!content) return;
+                    
+                    // Remove <!-- and --> wrappers if present
+                    content = content.replace(/^\s*<!--/, '').replace(/-->\s*$/, '').trim();
                     if (!content) return;
 
                     const baseName = style.id || `style`;
@@ -45,6 +49,14 @@ export class RefactorEngine {
                     const link = doc.createElement('link');
                     link.rel = 'stylesheet';
                     link.href = `css/${filename}`;
+                    
+                    // Copy attributes from style to link (e.g. media="print")
+                    Array.from(style.attributes).forEach(attr => {
+                        // Skip ID if we used it, or keep it. Keeping it is safer for JS hooks.
+                        // But we generated a filename from it. Let's keep all attributes.
+                        link.setAttribute(attr.name, attr.value);
+                    });
+
                     style.replaceWith(link);
                 });
                 logs.push(`Extracted ${styles.length} CSS blocks.`);
@@ -61,7 +73,11 @@ export class RefactorEngine {
 
             if (scripts.length > 0) {
                 scripts.forEach((script) => {
-                    const content = script.textContent.trim();
+                    let content = script.textContent;
+                    if (!content) return;
+
+                    // Remove <!-- and --> wrappers if present
+                    content = content.replace(/^\s*<!--/, '').replace(/-->\s*$/, '').trim();
                     if (!content) return;
 
                     const baseName = script.id || `script`;
@@ -74,10 +90,14 @@ export class RefactorEngine {
                     const newScript = doc.createElement('script');
                     newScript.src = `js/${filename}`;
 
-                    // Copy relevant attributes
-                    if (script.type) newScript.type = script.type;
-                    if (script.defer) newScript.defer = true;
-                    if (script.async) newScript.async = true;
+                    // Copy all attributes
+                    Array.from(script.attributes).forEach(attr => {
+                        newScript.setAttribute(attr.name, attr.value);
+                    });
+                    
+                    // Ensure type is copied or defaulted if needed, though loop above handles generic copying
+                    // Explicitly handling properties that might not map 1:1 via setAttribute if necessary
+                    // But for script tags, setAttribute is usually sufficient.
 
                     script.replaceWith(newScript);
                 });
