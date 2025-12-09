@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Monolith Breaker</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "jszip": "https://esm.sh/jszip@3.10.1"
+        }
+    }
+    </script>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
+            <h1>Monolith Breaker</h1>
+        </div>
+        <p class="subtitle">Deconstruct large HTML files into modular components.</p>
+    </header>
+
+    <main>
+        <section class="input-section">
+            <div class="toolbar">
+                <span class="label">Input Source</span>
+                <label class="file-upload">
+                    Upload File
+                    <input type="file" id="fileInput" accept=".html">
+                </label>
+            </div>
+            <textarea id="sourceCode" placeholder="Paste your raw index.html code here..." spellcheck="false"></textarea>
+        </section>
+
+        <section class="controls-section">
+            <div class="settings-group">
+                <h3>Extraction Strategy</h3>
+                
+                <label class="toggle-row">
+                    <span>
+                        <strong>Split CSS</strong>
+                        <small>Extract &lt;style&gt; tags to separate .css files</small>
+                    </span>
+                    <input type="checkbox" id="optCss" checked>
+                </label>
+
+                <label class="toggle-row">
+                    <span>
+                        <strong>Split JS</strong>
+                        <small>Extract inline &lt;script&gt; to .js files</small>
+                    </span>
+                    <input type="checkbox" id="optJs" checked>
+                </label>
+
+                <label class="toggle-row highlight">
+                    <span>
+                        <strong>Dynamic HTML Loader</strong>
+                        <small>Convert HTML body to JS injection (Advanced)</small>
+                    </span>
+                    <input type="checkbox" id="optDynamic">
+                </label>
+            </div>
+
+            <div class="action-area">
+                <div id="statusLog" class="status-log">Ready to process.</div>
+                <button id="processBtn" class="primary-btn">
+                    Refactor & Download .zip
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
+
