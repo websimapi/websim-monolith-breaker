@@ -5,6 +5,7 @@ const els = {
     fileInput: document.getElementById('fileInput'),
     processBtn: document.getElementById('processBtn'),
     status: document.getElementById('statusLog'),
+    fileMeta: document.getElementById('fileMeta'),
     opts: {
         css: document.getElementById('optCss'),
         js: document.getElementById('optJs'),
@@ -16,13 +17,26 @@ const engine = new RefactorEngine();
 
 // File Upload Handler
 els.fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const file = e.target.files && e.target.files[0];
+    if (!file) {
+        els.fileMeta.textContent = 'No file loaded';
+        return;
+    }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-        els.input.value = e.target.result;
-        els.status.textContent = `Loaded ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    reader.onload = (evt) => {
+        const text = evt.target && evt.target.result ? String(evt.target.result) : '';
+        els.input.value = text;
+        els.input.scrollTop = 0;
+
+        const sizeKb = (file.size / 1024).toFixed(1);
+        const name = file.name || 'Unnamed file';
+
+        els.status.style.color = "var(--text-dim)";
+        els.status.textContent = `Loaded ${name} (${sizeKb} KB)`;
+        if (els.fileMeta) {
+            els.fileMeta.textContent = `${name} • ${sizeKb} KB`;
+        }
     };
     reader.readAsText(file);
 });
@@ -49,12 +63,10 @@ els.processBtn.addEventListener('click', async () => {
 
         const { blob, logs } = await engine.process(rawHtml, options);
 
-        // Update Log
         const successMsg = logs.length > 0 ? logs.join(" | ") : "Processed with no extractions needed.";
         els.status.textContent = "Success! " + successMsg;
         els.status.style.color = "var(--success)";
 
-        // Download
         downloadBlob(blob, "refactored-project.zip");
 
     } catch (err) {
