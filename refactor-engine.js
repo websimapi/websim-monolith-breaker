@@ -10,24 +10,36 @@ export class RefactorEngine {
         const zip = new JSZip();
         const logs = [];
 
-        // Create directory structure
+        // Helper to ensure unique filenames
+        const usedFilenames = new Set();
+        const getUniqueFilename = (folder, baseName, ext) => {
+            let name = `${baseName}.${ext}`;
+            let counter = 1;
+            while (usedFilenames.has(`${folder}/${name}`)) {
+                name = `${baseName}-${counter}.${ext}`;
+                counter++;
+            }
+            usedFilenames.add(`${folder}/${name}`);
+            return name;
+        };
+
         const cssFolder = zip.folder("css");
         const jsFolder = zip.folder("js");
 
         // 1. Handle CSS
         if (options.splitCss) {
-            const styles = doc.querySelectorAll('style');
+            const styles = Array.from(doc.querySelectorAll('style'));
             if (styles.length > 0) {
-                styles.forEach((style, index) => {
-                    const content = style.innerHTML.trim();
+                styles.forEach((style) => {
+                    // Use textContent to avoid HTML entity encoding issues and grab raw CSS
+                    const content = style.textContent.trim();
                     if (!content) return;
 
-                    // Determine a name. If ID exists on style tag, use it.
-                    const name = style.id ? style.id : `style-${index + 1}`;
-                    const filename = `${name}.css`;
+                    const baseName = style.id || `style`;
+                    const filename = getUniqueFilename('css', baseName, 'css');
 
-                    // Add to zip
-                    cssFolder.file(filename, this.formatCss(content));
+                    // Add to zip (raw content)
+                    cssFolder.file(filename, content);
 
                     // Replace in DOM
                     const link = doc.createElement('link');
@@ -41,7 +53,6 @@ export class RefactorEngine {
 
         // 2. Handle JS
         if (options.splitJs) {
-            // Only select inline scripts that are not JSON-LD or modules that already have src
             const scripts = Array.from(doc.querySelectorAll('script:not([src])'))
                 .filter(s => {
                     const type = s.getAttribute('type');
@@ -49,12 +60,12 @@ export class RefactorEngine {
                 });
 
             if (scripts.length > 0) {
-                scripts.forEach((script, index) => {
-                    const content = script.innerHTML.trim();
+                scripts.forEach((script) => {
+                    const content = script.textContent.trim();
                     if (!content) return;
 
-                    const name = script.id ? script.id : `script-${index + 1}`;
-                    const filename = `${name}.js`;
+                    const baseName = script.id || `script`;
+                    const filename = getUniqueFilename('js', baseName, 'js');
 
                     // Add to zip
                     jsFolder.file(filename, content);
@@ -74,59 +85,56 @@ export class RefactorEngine {
             }
         }
 
-        // 3. Dynamic HTML Generation (The "Advanced" part)
+        // 3. Dynamic HTML Generation
         if (options.dynamicLoader) {
-            // Get the body innerHTML
             const bodyContent = doc.body.innerHTML;
 
-            // Clean body in DOM
-            doc.body.innerHTML = '<script src="js/layout-loader.js"></script>';
+            // Escape sensitive characters for the JS template string
+            // 1. Backslashes
+            // 2. Backticks
+            // 3. Template interpolation start ${
+            const safeContent = bodyContent
+                .replace(/\\/g, '\\\\') 
+                .replace(/`/g, '\\`')
+                .replace(/\$\{/g, '\\${');
 
-            // Create the generator script
-            // escaping backticks is crucial here
-            const safeContent = bodyContent.replace(/`/g, '\\`').replace(/\\$/g, '\\$');
-
+            const loaderFilename = "layout-loader.js";
             const loaderCode = `
-document.addEventListener("DOMContentLoaded", () => {
+(function() {
     const layout = \`${safeContent}\`;
-    // Create a range to properly execute scripts inserted via innerHTML
-    const range = document.createRange();
-    range.selectNode(document.body);
-    const fragment = range.createContextualFragment(layout);
-    document.body.appendChild(fragment);
-    console.log("Layout loaded dynamically.");
-});
-            `;
+    
+    function loadLayout() {
+        const range = document.createRange();
+        range.selectNode(document.body);
+        const fragment = range.createContextualFragment(layout);
+        document.body.appendChild(fragment);
+        console.log("Layout loaded dynamically.");
+    }
 
-            jsFolder.file("layout-loader.js", loaderCode);
-            logs.push(`Converted HTML body to dynamic JS loader.`);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadLayout);
+    } else {
+        loadLayout();
+    }
+})();
+            `.trim();
+
+            jsFolder.file(loaderFilename, loaderCode);
+
+            // Replace body with loader script
+            doc.body.innerHTML = '';
+            const loaderScript = doc.createElement('script');
+            loaderScript.src = `js/${loaderFilename}`;
+            doc.body.appendChild(loaderScript);
+
+            logs.push(`Converted body to dynamic JS loader.`);
         }
 
-        // 4. Finalize HTML
-        const finalHtml = this.prettyPrintHtml(doc.documentElement.outerHTML);
-        zip.file("index.html", `<!DOCTYPE html>\n${finalHtml}`);
+        // 4. Finalize HTML - Use outerHTML to preserve structure, avoid aggressive pretty printing which breaks some layouts
+        const finalHtml = `<!DOCTYPE html>\n${doc.documentElement.outerHTML}`;
+        zip.file("index.html", finalHtml);
 
-        // Generate Blob
         const blob = await zip.generateAsync({ type: "blob" });
         return { blob, logs };
-    }
-
-    formatCss(css) {
-        // Very basic indentation fix
-        return css.split('}').join('}\n').trim();
-    }
-
-    prettyPrintHtml(html) {
-        // Simple formatter to make the output readable
-        let formatted = '';
-        let indent = 0;
-        html.split(/>\\s*</).forEach(node => {
-            if (node.match(/^\\/\\w/)) indent -= 1;
-            formatted += new Array(Math.max(0, indent * 4)).join(' ') + '<' + node + '>\n';
-            if (node.match(/^<?\\w[^>]*[^\\/]$/) && !node.startsWith("input") && !node.startsWith("img") && !node.startsWith("br") && !node.startsWith("hr") && !node.startsWith("meta") && !node.startsWith("link")) {
-                indent += 1;
-            }
-        });
-        return formatted.substring(1, formatted.length - 2); // cleanup artifacts
     }
 }

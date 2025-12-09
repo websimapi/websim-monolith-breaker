@@ -50,7 +50,8 @@ els.processBtn.addEventListener('click', async () => {
         const { blob, logs } = await engine.process(rawHtml, options);
 
         // Update Log
-        els.status.textContent = logs.join(" ") || "Processed with no extractions needed.";
+        const successMsg = logs.length > 0 ? logs.join(" | ") : "Processed with no extractions needed.";
+        els.status.textContent = "Success! " + successMsg;
         els.status.style.color = "var(--success)";
 
         // Download
@@ -83,20 +84,32 @@ if (!els.input.value) {
 <head>
     <title>Sample Monolith</title>
     <style>
-        body { background: #333; color: white; }
-        h1 { font-family: sans-serif; }
+        body { background: #1a1a1a; color: #f0f0f0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        h1 { color: #61dafb; }
     </style>
-    <style id="buttons-css">
-        button { padding: 10px; cursor: pointer; }
+    <style id="extra-styles">
+        .card { background: #333; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        button { background: #61dafb; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 1rem; }
+        button:hover { background: #4fa8d1; }
     </style>
 </head>
 <body>
-    <h1>Hello World</h1>
-    <button onclick="sayHi()">Click Me</button>
+    <div class="card">
+        <h1>Monolith Test</h1>
+        <p>This is a sample layout.</p>
+        <button id="btn">Interact</button>
+        <div id="output" style="margin-top: 1rem; height: 20px;"></div>
+    </div>
+
     <script>
-        function sayHi() { 
-            alert('Hello from extracted JS!'); 
-        }
+        // This script will be extracted
+        const btn = document.getElementById('btn');
+        const out = document.getElementById('output');
+        const message = "Dynamic JS Working!";
+        
+        btn.addEventListener('click', () => {
+            out.textContent = \`\${message} - Timestamp: \${new Date().toLocaleTimeString()}\`;
+        });
     </script>
 </body>
 </html>`;
