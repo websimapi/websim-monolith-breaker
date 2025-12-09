@@ -4,8 +4,11 @@ const els = {
     input: document.getElementById('sourceCode'),
     fileInput: document.getElementById('fileInput'),
     processBtn: document.getElementById('processBtn'),
-    status: document.getElementById('statusLog'),
+    downloadBtn: document.getElementById('downloadBtn'),
     fileMeta: document.getElementById('fileMeta'),
+    resultsArea: document.getElementById('resultsArea'),
+    fileTree: document.getElementById('fileTree'),
+    logsArea: document.getElementById('logsArea'),
     opts: {
         css: document.getElementById('optCss'),
         js: document.getElementById('optJs'),
@@ -14,6 +17,7 @@ const els = {
 };
 
 const engine = new RefactorEngine();
+let currentZipBlob = null;
 
 // File Upload Handler
 els.fileInput.addEventListener('change', (e) => {
@@ -31,12 +35,12 @@ els.fileInput.addEventListener('change', (e) => {
 
         const sizeKb = (file.size / 1024).toFixed(1);
         const name = file.name || 'Unnamed file';
-
-        els.status.style.color = "var(--text-dim)";
-        els.status.textContent = `Loaded ${name} (${sizeKb} KB)`;
-        if (els.fileMeta) {
-            els.fileMeta.textContent = `${name} • ${sizeKb} KB`;
-        }
+        
+        els.fileMeta.textContent = `${name} (${sizeKb} KB)`;
+        
+        // Reset UI state
+        els.resultsArea.classList.add('hidden');
+        els.downloadBtn.disabled = true;
     };
     reader.readAsText(file);
 });
@@ -45,14 +49,16 @@ els.fileInput.addEventListener('change', (e) => {
 els.processBtn.addEventListener('click', async () => {
     const rawHtml = els.input.value;
     if (!rawHtml.trim()) {
-        els.status.textContent = "Error: Input is empty.";
-        els.status.style.color = "#ff6b6b";
+        alert("Please enter some HTML code or upload a file first.");
         return;
     }
 
-    els.status.style.color = "var(--text-dim)";
-    els.status.textContent = "Processing...";
+    // Reset UI
+    els.resultsArea.classList.remove('hidden');
+    els.fileTree.innerHTML = '<div style="color:var(--text-dim); padding:1rem; text-align:center">Processing...</div>';
+    els.logsArea.textContent = 'Starting engine...';
     els.processBtn.disabled = true;
+    els.downloadBtn.disabled = true;
 
     try {
         const options = {
@@ -61,22 +67,63 @@ els.processBtn.addEventListener('click', async () => {
             dynamicLoader: els.opts.dynamic.checked
         };
 
-        const { blob, logs } = await engine.process(rawHtml, options);
+        // Artificial delay for UX so they see it working
+        await new Promise(r => setTimeout(r, 500));
 
-        const successMsg = logs.length > 0 ? logs.join(" | ") : "Processed with no extractions needed.";
-        els.status.textContent = "Success! " + successMsg;
-        els.status.style.color = "var(--success)";
-
-        downloadBlob(blob, "refactored-project.zip");
+        const result = await engine.process(rawHtml, options);
+        
+        // Store blob for download
+        currentZipBlob = result.zipBlob;
+        
+        // Render Output
+        renderResults(result);
 
     } catch (err) {
         console.error(err);
-        els.status.textContent = "Error during processing. Check console.";
-        els.status.style.color = "#ff6b6b";
+        els.logsArea.textContent += `\nCRITICAL ERROR: ${err.message}`;
+        els.fileTree.innerHTML = `<div style="color:#ff6b6b; padding:1rem">Processing Failed. See logs.</div>`;
     } finally {
         els.processBtn.disabled = false;
     }
 });
+
+els.downloadBtn.addEventListener('click', () => {
+    if (currentZipBlob) {
+        downloadBlob(currentZipBlob, "monolith-refactored.zip");
+    }
+});
+
+function renderResults(result) {
+    // 1. Logs
+    els.logsArea.textContent = result.logs.join('\n');
+    els.logsArea.scrollTop = els.logsArea.scrollHeight;
+
+    // 2. File Tree
+    els.fileTree.innerHTML = '';
+    
+    if (result.fileManifest.length === 0) {
+        els.fileTree.innerHTML = '<div class="tree-item">No files generated.</div>';
+        return;
+    }
+
+    result.fileManifest.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'tree-item';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.innerHTML = `<span class="type">[${file.type.toUpperCase()}]</span> ${file.path}`;
+        
+        const sizeSpan = document.createElement('span');
+        sizeSpan.className = 'size';
+        sizeSpan.textContent = file.size;
+        
+        item.appendChild(nameSpan);
+        item.appendChild(sizeSpan);
+        els.fileTree.appendChild(item);
+    });
+
+    els.downloadBtn.disabled = false;
+}
 
 function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -86,41 +133,38 @@ function downloadBlob(blob, filename) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Initial default text for demo purposes if empty
+// Initial Sample
 if (!els.input.value) {
     els.input.value = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Sample Monolith</title>
+    <meta charset="UTF-8">
+    <title>Monolith Example</title>
     <style>
-        body { background: #1a1a1a; color: #f0f0f0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { color: #61dafb; }
+        /* Main Styles */
+        body { font-family: sans-serif; background: #222; color: #fff; padding: 2rem; }
+        .container { max-width: 600px; margin: 0 auto; border: 1px solid #444; padding: 20px; border-radius: 8px; }
     </style>
-    <style id="extra-styles">
-        .card { background: #333; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
-        button { background: #61dafb; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 1rem; }
-        button:hover { background: #4fa8d1; }
+    <style id="buttons-css">
+        button { background: tomato; color: white; border: 0; padding: 10px 20px; cursor: pointer; }
+        button:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Monolith Test</h1>
-        <p>This is a sample layout.</p>
-        <button id="btn">Interact</button>
-        <div id="output" style="margin-top: 1rem; height: 20px;"></div>
+    <div class="container">
+        <h1>Hello World</h1>
+        <p>Click the button below to test JS extraction.</p>
+        <button id="alertBtn">Click Me</button>
     </div>
 
     <script>
-        // This script will be extracted
-        const btn = document.getElementById('btn');
-        const out = document.getElementById('output');
-        const message = "Dynamic JS Working!";
-        
+        console.log("App started");
+        const btn = document.getElementById('alertBtn');
         btn.addEventListener('click', () => {
-            out.textContent = \`\${message} - Timestamp: \${new Date().toLocaleTimeString()}\`;
+            alert("Javascript extracted successfully!");
         });
     </script>
 </body>

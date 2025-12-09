@@ -31,54 +31,68 @@
     </header>
 
     <main>
-        <section class="input-section">
+        <section class="panel input-panel">
             <div class="toolbar">
-                <span class="label">Input Source</span>
+                <span class="label">1. Input Source</span>
                 <div class="toolbar-right">
                     <span id="fileMeta" class="file-meta">No file loaded</span>
-                    <label class="file-upload">
-                        Upload File
-                        <input type="file" id="fileInput" accept=".html,.htm,.xhtml,.php,.asp,.aspx,.jsp,.erb,.vue,.svelte,*/*">
+                    <label class="file-upload btn-small">
+                        Upload
+                        <input type="file" id="fileInput" accept=".html,.htm,.xhtml,text/html,*/*">
                     </label>
                 </div>
             </div>
-            <textarea id="sourceCode" placeholder="Paste your raw index.html code here..." spellcheck="false"></textarea>
+            <textarea id="sourceCode" placeholder="Paste your raw HTML code here..." spellcheck="false"></textarea>
         </section>
 
-        <section class="controls-section">
-            <div class="settings-group">
-                <h3>Extraction Strategy</h3>
-                
-                <label class="toggle-row">
-                    <span>
-                        <strong>Split CSS</strong>
-                        <small>Extract &lt;style&gt; tags to separate .css files</small>
-                    </span>
-                    <input type="checkbox" id="optCss" checked>
-                </label>
-
-                <label class="toggle-row">
-                    <span>
-                        <strong>Split JS</strong>
-                        <small>Extract inline &lt;script&gt; to .js files</small>
-                    </span>
-                    <input type="checkbox" id="optJs" checked>
-                </label>
-
-                <label class="toggle-row highlight">
-                    <span>
-                        <strong>Dynamic HTML Loader</strong>
-                        <small>Convert HTML body to JS injection (Advanced)</small>
-                    </span>
-                    <input type="checkbox" id="optDynamic">
-                </label>
+        <section class="panel controls-panel">
+            <div class="toolbar">
+                <span class="label">2. Configuration</span>
             </div>
+            
+            <div class="scroll-content">
+                <div class="settings-group">
+                    <label class="toggle-row">
+                        <div class="toggle-info">
+                            <strong>Extract Styles</strong>
+                            <small>Move &lt;style&gt; blocks to /css folder</small>
+                        </div>
+                        <input type="checkbox" id="optCss" checked>
+                    </label>
 
-            <div class="action-area">
-                <div id="statusLog" class="status-log">Ready to process.</div>
-                <button id="processBtn" class="primary-btn">
-                    Deconstruct & Download .zip
-                </button>
+                    <label class="toggle-row">
+                        <div class="toggle-info">
+                            <strong>Extract Scripts</strong>
+                            <small>Move inline &lt;script&gt; to /js folder</small>
+                        </div>
+                        <input type="checkbox" id="optJs" checked>
+                    </label>
+
+                    <label class="toggle-row warning-border">
+                        <div class="toggle-info">
+                            <strong>JS-Driven Layout</strong>
+                            <small>Convert &lt;body&gt; to JS injection (Experimental)</small>
+                        </div>
+                        <input type="checkbox" id="optDynamic">
+                    </label>
+                </div>
+
+                <div class="action-area">
+                    <button id="processBtn" class="primary-btn">
+                        <span>Analyze & Deconstruct</span>
+                    </button>
+                </div>
+
+                <div id="resultsArea" class="results-area hidden">
+                    <div class="toolbar-inner">
+                        <span class="label">3. Extraction Results</span>
+                    </div>
+                    <div id="fileTree" class="file-tree"></div>
+                    <div id="logsArea" class="logs-console"></div>
+                    <button id="downloadBtn" class="secondary-btn" disabled>
+                        Download Project .zip
+                    </button>
+                </div>
             </div>
         </section>
     </main>
